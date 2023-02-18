@@ -1,5 +1,6 @@
 const fs = require("fs");
 const http = require("http");
+const replaceTemplate = require("./modules/replaceTemplate");
 
 // Templates
 const templateOverview = fs.readFileSync(
@@ -15,28 +16,13 @@ const templateCard = fs.readFileSync(
   "utf-8"
 );
 
-const replaceTemplate = (temp, product) => {
-  let output = temp.replace(/{%PRODUCT_NAME%}/g, product.productName);
-  output = output.replace(/{%IMAGE%}/g, product.image);
-  output = output.replace(/{%QUANTITY%}/g, product.quantity);
-  output = output.replace(/{%PRICE%}/g, product.price);
-  output = output.replace(/{%ID%}/g, product.id);
-  output = output.replace(/{%FROM%}/g, product.from);
-  output = output.replace(/{%NUTRIENTS%}/g, product.nutrients);
-  output = output.replace(/{%DESCRIPTION%}/g, product.description);
-
-  if (!product.organic) {
-    output = output.replace(/{%NOT_ORGANIC%}/g, "not-organic");
-  }
-
-  return output;
-};
-
 const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, "utf-8");
 const productData = JSON.parse(data);
 
 const server = http.createServer((req, res) => {
   const pathName = req.url;
+  const params = new URLSearchParams(req.url);
+  const productId = params.get("/product?id");
 
   switch (pathName) {
     case "/" || "/overview":
@@ -49,12 +35,13 @@ const server = http.createServer((req, res) => {
         products
       );
 
-      // console.log(products);
       res.end(overview);
-      // res.end(products);
       break;
-    case "/items":
-      res.end("hello from items page");
+    case `/product?id=${productId}`:
+      res.writeHead(200, { "Content-type": "text/html" });
+      const product = productData[new Number(productId)];
+      const output = replaceTemplate(templateProduct, product);
+      res.end(output);
       break;
     case "/api":
       res.writeHead(200, { "Content-type": "application/json" });
